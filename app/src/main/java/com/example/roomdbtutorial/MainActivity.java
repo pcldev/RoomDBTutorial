@@ -1,10 +1,12 @@
 package com.example.roomdbtutorial;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
@@ -16,10 +18,12 @@ import android.widget.Toast;
 import com.example.roomdbtutorial.database.UserDAO;
 import com.example.roomdbtutorial.database.UserDatabase;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
+    private static final int MY_REQUEST_CODE = 10 ;
     private EditText edtUserName;
     private EditText edtAddress;
     private Button btnAdduser;
@@ -37,7 +41,12 @@ public class MainActivity extends AppCompatActivity {
 
 
         initUI();
-        userAdapter = new UserAdapter();
+        userAdapter = new UserAdapter(new UserAdapter.IClickItemUser() {
+            @Override
+            public void updateUser(User user) {
+                clickUpdateUser(user);
+            }
+        });
         mListUser = new ArrayList<>();
         userAdapter.setData(mListUser);
 
@@ -72,6 +81,13 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         User user = new User(strUserName,strAddress);
+
+        // check user existed
+        if(isUserExist(user)){
+            Toast.makeText(this, "user is existed", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         UserDatabase.getInstance(this).userDAO().insertUser(user);
         Toast.makeText(this, "Add User Successfully", Toast.LENGTH_SHORT).show();
 
@@ -96,4 +112,25 @@ public class MainActivity extends AppCompatActivity {
         userAdapter.setData(mListUser);
     }
 
+    private boolean isUserExist(User user){
+        List<User> list = UserDatabase.getInstance(this).userDAO().checkUser(user.getUsername());
+        return list != null && !list.isEmpty();
+    }
+
+    private void clickUpdateUser(User user){
+        Intent intent = new Intent(MainActivity.this,UpdateActivity.class);
+        Bundle bundle = new Bundle();
+        bundle.putSerializable("object_user",  user);
+        intent.putExtras(bundle);
+        startActivityForResult(intent,MY_REQUEST_CODE);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if(requestCode == MY_REQUEST_CODE && resultCode == Activity.RESULT_OK){
+            showListUser();
+        }
+    }
 }
